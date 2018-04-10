@@ -99,3 +99,8 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+octave-workspace
+/py3octave_env
+.directory
+/.ipynb_checkpoints
