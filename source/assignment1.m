@@ -46,17 +46,6 @@ function [A, P] = decompose_matrix(A, n)
     end
 end
 
-# Computes norm for given matrix.
-function norm1 = compute_1norm(A, n)
-    norm1 = 0;
-    for k = 1:n
-        column_sum = sum(abs(A(:, k)));
-        if column_sum > norm1
-            norm1 = column_sum;
-        end
-    end
-end
-
 # Computes residual for comparing L * U vs. the original matrix A.
 # Note: Also used for relative error, since calculation is identical.
 # Both arguments (A_prime, A) have to be of the same shape.
@@ -96,40 +85,7 @@ function executePart1()
       legend ({
             "Residuals (for LU = PA) "
         }, "location", "eastoutside")
-end
-
-# Executes code necessary to produce output for part 1 of the programming assignment.
-function executePart1()
-    # Apply LU factorization and compute residuals for 2^x where 3 <= x <= 10.
-    problem_sizes = [8 16 32 64 128 256 512 1024 2048];
-    residuals = zeros(size(problem_sizes));
-    
-    for i = 1:size(problem_sizes)(2)
-        n = problem_sizes(i);
-
-        # Generate random non-singular matrix of rank n.
-        A = generate_random_nonsingular_matrix(n);
-        # Decompose into L, U and P.
-        [LU, P] = decompose_matrix(A, n);
-
-        # Extract L and U from returned matrix.
-        L = tril(LU, -1);
-        U = triu(LU, 0);
-        # Set diagonale of L to 1.
-        L(1:1 + size(L, 1):end) = 1;
-
-        # Compute residual.
-        residuals(i) = compute_relative_delta(L * U, P * A, n);
-    end
-
-    # Plot residuals.
-    figure('Position',[0, 0, 650, 250])
-    semilogy(problem_sizes, residuals)
-    grid on
-    hold on
-      legend ({
-            "Residuals (for LU = PA) "
-        }, "location", "eastoutside")
+    title ("LU decomposition with random A", "fontsize", 16);
 end
 
 ##############################################
@@ -209,7 +165,7 @@ function executePart2()
     hold on
     
     # Apply LU factorization and compute residuals for 2^x where 3 <= x <= 10.
-    problem_sizes = [8 16 32 64 128 256 512 1024 2048 4096 8192];
+    problem_sizes = [8 16 32 64 128 256 512 1024 2048 4096 8192 16384];
     residuals_fw = zeros(size(problem_sizes));
     forward_errors_fw = zeros(size(problem_sizes));
     residuals_bw = zeros(size(problem_sizes));
@@ -248,8 +204,115 @@ function executePart2()
             "Residuals (bwd. substitution)", 
             "Forward error (bwd. substitution)"
         }, "location", "eastoutside")
+   	title ("Fw./bw. substitution with random LU", "fontsize", 16);
 end
 
 ##############################################
 # For part 3.
 ##############################################
+
+# Solves linear system Ax = b for x. Utilizes manual implementation of LU factorization and 
+# forward/backward substitution.
+function x = solve_linear_system(A, b, n)
+    # 1. LU factorization.
+    [LU, P] = decompose_matrix(A, n);
+    
+    # Extract L and U from returned matrix.
+    L = tril(LU, -1);
+    U = triu(LU, 0);
+    # Set diagonale of L to 1.
+    L(1:1 + size(L, 1):end) = 1;
+    
+    # 2. Solve Ly = Pb for y.
+    y = apply_forward_substitution(L, P * b);
+    
+    # 3. Solve Ux = y for x.
+    x = apply_backward_substitution(U, y);
+end
+
+# Generate test matrices S and H for part 3.
+function [S, H] = generate_test_matrices_for_part3(n)
+    S = rand(n) * 2 - 1;
+    
+    H = zeros(n);
+    for i = 1:n
+        H(i, :) = 1 ./ (i + (1:n) - 1);
+    end
+end
+
+# Executes code necessary to produce output for part 3 of the programming assignment.
+function executePart3()
+    problem_sizes = [2:10, 15:5:50, 75 100 150 200 400 800 1600];
+    residuals_s = zeros(size(problem_sizes));
+    residuals_h = zeros(size(problem_sizes));
+    forward_errors_s = zeros(size(problem_sizes));
+    forward_errors_h = zeros(size(problem_sizes));
+    residuals_s_octave = zeros(size(problem_sizes));
+    residuals_h_octave = zeros(size(problem_sizes));
+    forward_errors_s_octave = zeros(size(problem_sizes));
+    forward_errors_h_octave = zeros(size(problem_sizes));    
+    
+    for i = 1:size(problem_sizes)(2)
+        n = problem_sizes(i);
+    
+        # 1. Generate test matrices.
+        [S, H] = generate_test_matrices_for_part3(n);
+
+        # 2. Determine b (and consequently y) so that x = 1, 1, 1, ..., 1^T.
+        x = ones([n 1]);
+        b_s = S * x;
+        b_h = H * x;
+
+        # 2. Solve linear systems Sx = b and Hx = b.
+        x_s = solve_linear_system(S, b_s, n);
+        x_h = solve_linear_system(H, b_h, n);
+        x_s_octave = S \ b_s;
+        x_h_octave = H \ b_h;
+
+        # 3. Compute accuracy measures.
+        # 3. a. Compute relative residuals.
+        residuals_s(i) = compute_relative_delta(S * x_s, b_s, n);
+        residuals_h(i) = compute_relative_delta(H * x_h, b_h, n);
+        residuals_s_octave(i) = compute_relative_delta(S * x_s_octave, b_s, n);
+        residuals_h_octave(i) = compute_relative_delta(H * x_h_octave, b_h, n);
+        # 3. b. Compute forward errors.
+        forward_errors_s(i) = compute_relative_delta(x_s, x, n);
+        forward_errors_h(i) = compute_relative_delta(x_h, x, n);
+        forward_errors_s_octave(i) = compute_relative_delta(x_s_octave, x, n);
+        forward_errors_h_octave(i) = compute_relative_delta(x_h_octave, x, n);        
+    end
+    
+    # Plot metrics.
+    # Sx = b
+    figure('Position',[0, 0, 800, 250])
+    warning('off','all');
+    grid on
+    hold on
+    semilogy(problem_sizes, residuals_s, '1; Residual for Sx = b (manual);.-');
+    semilogy(problem_sizes, forward_errors_s, "markersize", 3, '1; Forward error for Sx = b (manual);o-');
+    semilogy(problem_sizes, residuals_s_octave, '3; Residuals for Sx = b (octave version);.-');
+    semilogy(problem_sizes, forward_errors_s_octave, "markersize", 3, '3; Forward error for Sx = b (octave);o-');
+    legend ({
+            "Residual (manual)", 
+            "Forward error (manual)", 
+            "Residuals (octave version)", 
+            "Forward error (octave)"
+        }, "location", "eastoutside")    
+    title ("Triang. linear system solver | Sx = b", "fontsize", 16);
+
+    # Hx = b
+    figure('Position',[0, 0, 800, 250])
+    grid on
+    hold on
+    semilogy(problem_sizes, residuals_h, '1; Residual for Sx = b (manual);.-');
+    semilogy(problem_sizes, forward_errors_h, "markersize", 3, '1; Forward error for Sx = b (manual);o-');
+    semilogy(problem_sizes, residuals_h_octave, '3; Residuals for Sx = b (octave version);.-');
+    semilogy(problem_sizes, forward_errors_h_octave, "markersize", 3, '3; Forward error for Sx = b (octave);o-');
+    legend ({
+            "Residual (manual)", 
+            "Forward error (manual)", 
+            "Residuals (octave version)", 
+            "Forward error (octave)"
+        }, "location", "eastoutside")    
+    title ("Triang. linear system solver | Hx = b", "fontsize", 16);
+end
