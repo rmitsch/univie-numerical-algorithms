@@ -127,7 +127,11 @@ end
 function x = apply_forward_substitution(L, b)
     x = zeros([1 length(b)]);
     
+    xy_norm = zeros([1 length(b)]);
+    xnorm_ynorm = zeros([1 length(b)]);
     for i = 1:length(b)
+    	xy_norm(i) = norm(L(i, 1:i-1) .* x(1:i-1));
+    	xnorm_ynorm(i) = norm(L(i, 1:i-1)) * norm(x(1:i-1));
         # Calculate x_i.
         x(i) = (
             # Calculate sum to subtract by adding factors multiplied with previous results for x_(k < i).
@@ -136,7 +140,7 @@ function x = apply_forward_substitution(L, b)
             b(i) - sum(L(i, 1:i-1) .* x(1:i-1) * (i >= 2))
         ) / L(i, i);
     end
-    
+
     x = transpose(x);
 end
 
@@ -216,16 +220,17 @@ end
 function x = solve_linear_system(A, b, n)
     # 1. LU factorization.
     [LU, P] = decompose_matrix(A, n);
-    
+
     # Extract L and U from returned matrix.
     L = tril(LU, -1);
     U = triu(LU, 0);
     # Set diagonale of L to 1.
     L(1:1 + size(L, 1):end) = 1;
-    
+
+
     # 2. Solve Ly = Pb for y.
     y = apply_forward_substitution(L, P * b);
-    
+
     # 3. Solve Ux = y for x.
     x = apply_backward_substitution(U, y);
 end
@@ -279,7 +284,7 @@ function executePart3()
         forward_errors_s(i) = compute_relative_delta(x_s, x, n);
         forward_errors_h(i) = compute_relative_delta(x_h, x, n);
         forward_errors_s_octave(i) = compute_relative_delta(x_s_octave, x, n);
-        forward_errors_h_octave(i) = compute_relative_delta(x_h_octave, x, n);        
+        forward_errors_h_octave(i) = compute_relative_delta(x_h_octave, x, n);
     end
     
     # Plot metrics.
