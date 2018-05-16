@@ -304,6 +304,8 @@ function executePart3()
             "Forward error (octave)"
         }, "location", "eastoutside")    
     title ("Triang. linear system solver | Sx = b", "fontsize", 16);
+	xlabel("n")
+	ylabel("Residual / forward error")
 
     # Hx = b
     figure('Position',[0, 0, 800, 250])
@@ -320,4 +322,6 @@ function executePart3()
             "Forward error (octave)"
         }, "location", "eastoutside")    
     title ("Triang. linear system solver | Hx = b", "fontsize", 16);
+    xlabel("n")
+	ylabel("Residual / forward error")
 end
