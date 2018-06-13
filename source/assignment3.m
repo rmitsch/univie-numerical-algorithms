@@ -1,6 +1,6 @@
 % CG without preconditioning.
 % Uses the relative residual as convergence criterion.
-function [numberOfIterations, runTime, relResHistory] = applyCG(A, convergence_threshold)
+function [numberOfIterations, runTime, relResHistory] = applyCG(A, convergence_threshold = 10^-3, M = eye())
     tic;
 
     % Define x as vector of ones.
