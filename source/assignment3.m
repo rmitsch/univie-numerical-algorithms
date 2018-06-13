@@ -1,102 +1,55 @@
-% Approximate condition number of A stochastically by generating random 
-% vector and selecting the maximum ratio ||z|| / ||y|| to solve Az = y.
-function condapprox = approximate_cond_stochastically(A, t = 1000)
-    condapprox = 0;
-    n = size(A)(1);
+% CG without preconditioning.
+% Uses the relative residual as convergence criterion.
+function [numberOfIterations, runTime, relResHistory] = applyCG(A, convergence_threshold)
+    tic;
 
-    max_ratio = 0;
-    for i = 1:1:t
-        y = rand(n, 1);
-        z = A \ y;
-        max_ratio = max(max_ratio, norm(z, 1) / norm(y, 1));
-    end
-
-    condapprox = norm(A, 1) * max_ratio;
-end
-
-% Execute code for part 1 of the programming assignment.
-function executePart1()
-	% --------------------------------
-	% Part 1 of the task: Investigate
-	% different n. 
-	% --------------------------------
-
-    problem_sizes = [5 10 25 50 100 200 300 400 500];
-    conds_approx = zeros(size(problem_sizes));
-    conds = zeros(size(problem_sizes));
-    condests_oct = zeros(size(problem_sizes));
+    % Define x as vector of ones.
+    x_true = ones(size(A)(1), 1);
+    % Determine b implicitly.
+    b_true = A * x_true;
     
-    for i = 1:1:size(problem_sizes)(2)
-        A = rand(problem_sizes(i));
-
-        conds(i) = cond(A, 1);
-        condests(i) = condest(A);
-
-        for j = 1:1:5
-        	conds_approx(i) += approximate_cond_stochastically(A);
-    	end
-    	conds_approx(i) /= 5;
+    % Set up evaluation variables.
+    numberOfIterations = 0;
+    runTime = 0;
+    relResHistory = [];
+    
+    % Initial guess for x.
+    x = rand(size(A)(1), 1);
+    % Compute initial residual.
+    r = b_true - A * x;
+    % Compute initial search direction.
+    s = r;
+    % Compute initial convergence criterion.
+    convergence_criterion = norm(r) / norm(b_true);
+    relResHistory = [relResHistory convergence_criterion];
+    
+    % Continue as long as convergence criterion exceeds defined threshold. 
+    while convergence_criterion > convergence_threshold
+        % Buffer value of previous r, since we need values of previous and current/next r at the same time.
+        prev_r = r;
+        
+        % Precomputed values that are used more than once.
+        As = A * s;
+        prev_rtr = transpose(prev_r) * prev_r;
+        
+        % Step size.
+        alpha = prev_rtr / (transpose(s) * As);
+        % Next iteration of solution vector.
+        x = x + alpha * s;
+        % Next residual.
+        r = prev_r - alpha * As;
+        % Next beta.
+        beta = (transpose(r) * r) / prev_rtr;
+        % Next search direction.
+        s = r + beta * s;
+        
+        % Compute convergence criterion for current iteration.
+        convergence_criterion = norm(A * x - b_true) / norm(b_true);
+        relResHistory = [relResHistory convergence_criterion];
+        
+        % Keep track of number of iterations.
+        numberOfIterations += 1;
     end
-
-    % Plot results.
-	figure('Position',[0, 0, 750, 350])
-	grid on
-	hold on
-
-	semilogy(problem_sizes, conds, 'markersize', 3, '2; cond(A);x-');
-	semilogy(problem_sizes, condests, 'markersize', 3, '3; condest(A);o-');
-	semilogy(problem_sizes, conds_approx, 'markersize', 3, '4; Randomized cond. number approx.;.-');
-
-	legend ({
-	    'cond(A) ',
-	    'condest(A) ',
-	    'Rand. approximation of cond(A) '
-	}, 'location', 'eastoutside')
-	title ("Fig. 2: Comparison of condition estimates \nfor random matrices", 'fontsize', 16);
-	xlabel('n');
-	ylabel('(Estimation of) condition number');
-
-	% --------------------------------
-	% Part 2 of the task: Investigate
-	% different number of tries. 
-	% --------------------------------
-
-    problem_sizes = [5 10 100];
-	random_tries = [1 5 10 20 50 100 200 300 500 1000 2000 5000];
-	rel_cond_approx_errors = zeros(size(problem_sizes)(2), size(random_tries)(2));
-	
-	for i = 1:size(problem_sizes)(2)
-		A = rand(problem_sizes(i));
-		condA = cond(A, 1);
-
-		for j = 1:size(random_tries)(2)
-			% Calculate averaged randomized approximation to condition number.
-			cond_approx = 0;
-	        for k = 1:1:5
-	        	cond_approx += approximate_cond_stochastically(A, random_tries(j));
-	    	end
-	    	cond_approx /= 5;
-
-			rel_cond_approx_errors(i, j) = abs(condA - cond_approx) / condA;
-		end
-    end
-
-    % Plot results.
-	figure('Position',[0, 0, 750, 350])
-	grid on
-	hold on
-
-	plot(random_tries, rel_cond_approx_errors(1,:), 'markersize', 3, '2; n = 5;x-');
-	plot(random_tries, rel_cond_approx_errors(2,:), 'markersize', 3, '3; n = 10;o-');
-	plot(random_tries, rel_cond_approx_errors(3,:), 'markersize', 3, '4; n = 100;.-');
-
-	legend ({
-	    'n = 5 ',
-	    'n = 10 ',
-	    'n = 100 '
-	}, 'location', 'eastoutside')
-	title ("Fig. 3: Behaviour of random. approximation of cond with growing number of tries", 'fontsize', 16);
-	xlabel('Number of randomly selected vectors y');
-	ylabel('Relative error: |cond(A) - cond_{approx}(A)| / cond(A)');
-
+    
+    runTime = toc;
 end
