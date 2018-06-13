@@ -1,6 +1,6 @@
 % CG without preconditioning.
 % Uses the relative residual as convergence criterion.
-function [numberOfIterations, runTime, relResHistory] = applyCG(A, convergence_threshold = 10^-3, M = eye())
+function [numberOfIterations, runTime, relResHistory] = applyCG(A, convergence_threshold = 10^-3, M_inverse = eye())
     tic;
 
     % Define x as vector of ones.
@@ -18,7 +18,7 @@ function [numberOfIterations, runTime, relResHistory] = applyCG(A, convergence_t
     % Compute initial residual.
     r = b_true - A * x;
     % Compute initial search direction.
-    s = r;
+    s = M_inverse * r;
     % Compute initial convergence criterion.
     convergence_criterion = norm(r) / norm(b_true);
     relResHistory = [relResHistory convergence_criterion];
@@ -30,18 +30,19 @@ function [numberOfIterations, runTime, relResHistory] = applyCG(A, convergence_t
         
         % Precomputed values that are used more than once.
         As = A * s;
-        prev_rtr = transpose(prev_r) * prev_r;
-        
+        prev_rtMr = transpose(prev_r) * M_inverse * prev_r;
+
         % Step size.
-        alpha = prev_rtr / (transpose(s) * As);
+        alpha = prev_rtMr / (transpose(s) * As);
         % Next iteration of solution vector.
         x = x + alpha * s;
         % Next residual.
         r = prev_r - alpha * As;
         % Next beta.
-        beta = (transpose(r) * r) / prev_rtr;
+        M_inverse_r = M_inverse * r;
+        beta = (transpose(r) * M_inverse_r) / prev_rtMr;
         % Next search direction.
-        s = r + beta * s;
+        s = M_inverse_r + beta * s;
         
         % Compute convergence criterion for current iteration.
         convergence_criterion = norm(A * x - b_true) / norm(b_true);
@@ -50,6 +51,6 @@ function [numberOfIterations, runTime, relResHistory] = applyCG(A, convergence_t
         % Keep track of number of iterations.
         numberOfIterations += 1;
     end
-    
+
     runTime = toc;
 end
