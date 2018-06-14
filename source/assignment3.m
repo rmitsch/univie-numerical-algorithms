@@ -1,3 +1,49 @@
+% Generate matrix M for preconditioning of matrix A used in applyCG(...).
+% precondConfig is a structure having some or all of the following properties:
+%     - method is the preconditioning method to use. Available: diag, block, cholesky_nofi, cholesky_drop.
+%     - dropThreshold is ignored for all methods except cholesky_drop.
+%     - alpha is ignored for all methods except Cholesky factorization-based ones.
+%     - stepsize is ignored for all methods except block-diagonale matrices.
+% and contains configuration settins for preconditioning A.
+function M = generatePreconditioning(A, precondConfig)
+    switch (precondConfig.method)
+        case "diag"
+            % Extract diagonale matrix.
+            M = diag(diag(A), 0);
+            
+        case "block"
+            M = zeros(0, 0);
+            
+            % Extract and concatenate stepsized blocks to block-diagonale matrix.
+            for i = 1:precondConfig.stepsize:size(A)(1)
+                % Calculate range of indices to use for current block.
+                block_idx_range = i:min(i + precondConfig.stepsize - 1, size(A)(1));
+                % Assemble M by extending block-diagonale matrix with newly extracted block.
+                M = blkdiag(M, A(block_idx_range, block_idx_range));
+            end
+
+        case "cholesky_nofi"
+            chol_options = struct();
+            chol_options.type = "nofill";
+            chol_options.diagcomp = precondConfig.alpha;
+            
+            M = ichol(A, chol_options);
+            
+        case "cholesky_drop"
+            chol_options = struct();
+            chol_options.type = "ict";
+            chol_options.diagcomp = precondConfig.alpha;
+            chol_options.dropTol = precondConfig.dropThreshold;
+            
+            M = ichol(A, chol_options);
+            
+        % Wrong method name: Output warning, continue with M = I.
+        otherwise
+            printf("*** Warning *** Chosen method not supported.");
+            M = eye();
+    endswitch
+end
+
 % CG without preconditioning.
 % Uses the relative residual as convergence criterion.
 function [numberOfIterations, runTime, relResHistory] = applyCG(A, convergence_threshold = 10^-3, M_inverse = eye())
