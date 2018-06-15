@@ -27,15 +27,17 @@ function M = generatePreconditioning(A, precondConfig)
             chol_options.type = "nofill";
             chol_options.diagcomp = precondConfig.alpha;
             
-            M = ichol(A, chol_options);
+            L = ichol(A, chol_options);
+            M = L * transpose(L);
             
         case "cholesky_drop"
             chol_options = struct();
             chol_options.type = "ict";
             chol_options.diagcomp = precondConfig.alpha;
-            chol_options.dropTol = precondConfig.dropThreshold;
+            chol_options.droptol = precondConfig.dropThreshold;
             
-            M = ichol(A, chol_options);
+            L = ichol(A, chol_options);
+            M = L * transpose(L);
             
         % Wrong method name: Output warning, continue with M = I.
         otherwise
