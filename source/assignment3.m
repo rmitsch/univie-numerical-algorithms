@@ -45,7 +45,7 @@ function M_inv = generatePreconditioning(A, precondConfig)
             
         % Wrong method name: Output warning, continue with M = I.
         otherwise
-            printf("*** Warning *** Chosen method not supported.");
+            printf("*** Warning *** Chosen preconditioning method not supported.");
             M = eye();
     endswitch
 end
